@@ -1,0 +1,32 @@
+---
+- name: Copy .bashrc
+  copy:
+    src: "{{ role_path }}/files/.bashrc"
+    dest: "{{ ansible_env.HOME }}"
+
+- name: Read current MATE terminal profiles
+  dconf:
+    key: /org/mate/terminal/global/profile-list
+    state: read
+  register: profile_list
+
+- name: Set profile list variable
+  set_fact:
+    profile_list:
+      value: "['default']"
+  when: profile_list.value is none
+
+- name: Add our profile
+  set_fact:
+    new_profile_list: "{{ profile_list.value | regex_replace(']$', \", 'my-profile']\") }}"
+
+- name: Write updated profile list
+  dconf:
+    key: /org/mate/terminal/global/profile-list
+    value: "{{ new_profile_list }}"
+  when: "'my-profile' not in profile_list.value"
+
+- name: Load our profile
+  shell:
+    cmd: "dconf load /org/mate/terminal/profiles/my-profile/ < {{ role_path }}/files/my-profile"
+  when: "'my-profile' not in profile_list.value"
